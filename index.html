@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Berlino gratis con i ragazzi · Guida interattiva</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171a2b; --panel2:#1e2238; --line:#2a2f4a;
+    --txt:#eef1ff; --muted:#a6acce; --accent:#ffca3a; --accent2:#4cc9f0;
+    --ok:#8ce99a; --warn:#ffb4a2; --chip:#232848; --shadow:0 8px 30px rgba(0,0,0,.35);
+    --c-storia:#e07a5f; --c-tech:#4cc9f0; --c-parchi:#8ce99a; --c-street:#c77dff;
+    --c-insolite:#ffca3a; --c-pano:#f28482; --c-mercati:#ffb703;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#f4f6fb; --panel:#ffffff; --panel2:#f0f3fb; --line:#e2e7f3;
+      --txt:#131728; --muted:#5a6180; --chip:#eef1fb; --shadow:0 8px 26px rgba(20,30,60,.10);
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--txt);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.5;-webkit-font-smoothing:antialiased}
+  a{color:var(--accent2)}
+  header.hero{padding:26px 20px 18px;background:
+      radial-gradient(1200px 300px at 10% -20%, rgba(76,201,240,.18), transparent),
+      radial-gradient(1000px 300px at 90% -30%, rgba(255,202,58,.16), transparent);
+    border-bottom:1px solid var(--line)}
+  .hero h1{margin:0 0 6px;font-size:clamp(1.5rem,3vw,2.2rem);letter-spacing:.2px}
+  .hero p{margin:0;color:var(--muted);max-width:70ch}
+  .hero .meta{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px}
+  .pill{background:var(--chip);border:1px solid var(--line);color:var(--muted);
+    padding:4px 10px;border-radius:999px;font-size:.8rem}
+  .wrap{max-width:1280px;margin:0 auto;padding:0 16px}
+  .layout{display:grid;grid-template-columns:290px 1fr;gap:18px;padding:18px 0 60px}
+  @media (max-width:960px){.layout{grid-template-columns:1fr}}
+  /* filters */
+  aside{position:sticky;top:12px;align-self:start;max-height:calc(100vh - 24px);
+    overflow:auto;background:var(--panel);border:1px solid var(--line);
+    border-radius:16px;padding:14px;box-shadow:var(--shadow)}
+  @media (max-width:960px){aside{position:static;max-height:none}}
+  aside h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.12em;
+    color:var(--muted);margin:16px 0 8px}
+  aside h2:first-child{margin-top:2px}
+  .field{margin-bottom:6px}
+  .search{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--txt);font-size:.95rem}
+  select,input[type=range]{width:100%}
+  select{padding:8px;border-radius:10px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--txt)}
+  .checks{display:flex;flex-direction:column;gap:6px;max-height:190px;overflow:auto;
+    padding:2px}
+  .chk{display:flex;align-items:center;gap:8px;font-size:.9rem;cursor:pointer;
+    padding:4px 6px;border-radius:8px}
+  .chk:hover{background:var(--panel2)}
+  .chk input{accent-color:var(--accent2)}
+  .swatch{width:11px;height:11px;border-radius:3px;flex:none}
+  .rangeval{color:var(--muted);font-size:.82rem;float:right}
+  .stars{display:flex;gap:6px;flex-wrap:wrap}
+  .stars button{flex:1;min-width:34px;padding:6px 0;border-radius:9px;cursor:pointer;
+    border:1px solid var(--line);background:var(--panel2);color:var(--muted);font-size:.85rem}
+  .stars button.on{background:var(--accent);color:#20160a;border-color:var(--accent);font-weight:700}
+  .toggle{display:flex;align-items:center;gap:8px;font-size:.9rem;cursor:pointer;padding:4px 0}
+  .btnrow{display:flex;gap:8px;margin-top:14px}
+  .btn{flex:1;padding:10px;border-radius:10px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--txt);cursor:pointer;font-size:.9rem}
+  .btn.primary{background:var(--accent);color:#20160a;border-color:var(--accent);font-weight:700}
+  /* main */
+  .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;
+    margin-bottom:12px}
+  .count{font-size:.95rem;color:var(--muted)}
+  .count b{color:var(--txt)}
+  .sortsel{display:flex;align-items:center;gap:8px;font-size:.9rem;color:var(--muted)}
+  .sortsel select{padding:6px 8px}
+  #map{height:380px;border-radius:16px;border:1px solid var(--line);margin-bottom:16px;
+    box-shadow:var(--shadow);z-index:0}
+  .leaflet-popup-content{margin:10px 12px;font:inherit}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column;
+    scroll-margin-top:14px}
+  .card.hl{outline:3px solid var(--accent);outline-offset:2px}
+  .photo{position:relative;aspect-ratio:16/10;background:#222 center/cover no-repeat}
+  .photo .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:3rem;background:linear-gradient(135deg,#2a2f4a,#3a416b);z-index:0}
+  .photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;z-index:1}
+  .badge-cat{position:absolute;left:10px;top:10px;z-index:2;padding:4px 9px;border-radius:999px;
+    font-size:.72rem;font-weight:700;color:#12131f;display:flex;align-items:center;gap:5px;
+    box-shadow:0 2px 8px rgba(0,0,0,.3)}
+  .fam{position:absolute;right:10px;top:10px;z-index:2;background:rgba(15,18,32,.85);color:var(--accent);
+    padding:4px 9px;border-radius:999px;font-size:.78rem;font-weight:700;backdrop-filter:blur(4px)}
+  .cbody{padding:14px;display:flex;flex-direction:column;gap:10px;flex:1}
+  .cbody h3{margin:0;font-size:1.06rem;line-height:1.25}
+  .zone{color:var(--muted);font-size:.82rem}
+  .desc{font-size:.9rem;color:var(--txt);opacity:.92}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:.83rem;
+    border-top:1px dashed var(--line);padding-top:10px;margin-top:auto}
+  .kv .k{color:var(--muted)}
+  .free-ok{color:var(--ok);font-weight:600}
+  .free-cond{color:var(--warn);font-weight:600}
+  .transit{display:flex;flex-wrap:wrap;gap:5px;margin-top:2px}
+  .stop{display:inline-flex;align-items:center;gap:5px;background:var(--chip);
+    border:1px solid var(--line);border-radius:8px;padding:2px 7px;font-size:.76rem}
+  .ln{font-weight:800;font-size:.72rem;color:#fff;border-radius:4px;padding:1px 5px;line-height:1.4}
+  .ln.u{background:#1b62b3}.ln.s{background:#008d4f}.ln.bus{background:#95276e}
+  .ln.tram{background:#c8161d}.ln.walk{background:#5a6180}
+  .interest{display:flex;gap:12px;font-size:.8rem;color:var(--muted);flex-wrap:wrap}
+  .interest b{color:var(--txt)}
+  .clink{display:inline-flex;gap:6px;align-items:center;font-size:.83rem}
+  .warnbadge{display:inline-block;background:rgba(255,180,162,.15);color:var(--warn);
+    border:1px solid rgba(255,180,162,.4);border-radius:8px;padding:2px 8px;font-size:.76rem}
+  .empty{padding:60px 20px;text-align:center;color:var(--muted)}
+  footer{border-top:1px solid var(--line);padding:22px 16px;color:var(--muted);font-size:.85rem}
+  footer .wrap{max-width:1280px}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+  .legend span{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;color:var(--muted)}
+  mark{background:var(--accent);color:#20160a;border-radius:3px;padding:0 2px}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <h1>🐻 Berlino gratis con i ragazzi</h1>
+    <p>29 attrazioni gratuite di Berlino con foto, descrizioni, posizione su mappa e fermate dei mezzi più vicine. Filtra per categoria, zona, distanza, durata e adatta la visita agli interessi dei bambini.</p>
+    <div class="meta">
+      <span class="pill">📍 Base: Stresemannstraße 49, 10963 Berlino</span>
+      <span class="pill">🗓️ Soggiorno 3–9 agosto 2026</span>
+      <span class="pill">👦 9 anni · 🧑 14 anni</span>
+      <span class="pill">💶 Tutte gratuite</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+<div class="layout">
+  <aside>
+    <div class="field">
+      <input id="q" class="search" type="search" placeholder="🔎 Cerca attrazione, quartiere…">
+    </div>
+
+    <h2>Categoria</h2>
+    <div id="fCat" class="checks"></div>
+
+    <h2>Zona</h2>
+    <div id="fZone" class="checks"></div>
+
+    <h2>Mezzo consigliato</h2>
+    <div id="fTrans" class="checks"></div>
+
+    <h2>Distanza max dalla base <span id="distVal" class="rangeval"></span></h2>
+    <input id="dist" type="range" min="0.3" max="5.8" step="0.1">
+
+    <h2>Durata max della visita <span id="durVal" class="rangeval"></span></h2>
+    <input id="dur" type="range" min="20" max="180" step="10">
+
+    <h2>Interesse minimo · 9 anni</h2>
+    <div id="i9" class="stars"></div>
+    <h2>Interesse minimo · 14 anni</h2>
+    <div id="i14" class="stars"></div>
+    <h2>Voto famiglia minimo</h2>
+    <div id="fam" class="stars"></div>
+
+    <h2>Altri filtri</h2>
+    <label class="toggle"><input type="checkbox" id="freeAlways"> Solo sempre gratuite</label>
+    <label class="toggle"><input type="checkbox" id="noBooking"> Senza prenotazione</label>
+    <div class="field" style="margin-top:8px">
+      <select id="openDay">
+        <option value="">Aperta in un giorno qualsiasi</option>
+        <option value="1">Aperta di lunedì</option>
+        <option value="2">Aperta di martedì</option>
+        <option value="3">Aperta di mercoledì</option>
+        <option value="4">Aperta di giovedì</option>
+        <option value="5">Aperta di venerdì</option>
+        <option value="6">Aperta di sabato</option>
+        <option value="0">Aperta di domenica</option>
+      </select>
+    </div>
+
+    <div class="btnrow">
+      <button class="btn primary" id="reset">↺ Azzera filtri</button>
+    </div>
+  </aside>
+
+  <main>
+    <div class="toolbar">
+      <div class="count" id="count"></div>
+      <div class="sortsel">
+        <label for="sort">Ordina per</label>
+        <select id="sort">
+          <option value="dist">Distanza (vicino → lontano)</option>
+          <option value="fam">Voto famiglia (alto → basso)</option>
+          <option value="i9">Interesse 9 anni</option>
+          <option value="i14">Interesse 14 anni</option>
+          <option value="name">Nome (A → Z)</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="map"></div>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty" hidden>Nessuna attrazione corrisponde ai filtri selezionati.<br>Prova ad <a href="#" id="resetInline">azzerare i filtri</a>.</div>
+  </main>
+</div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <p><b>Come leggere i dati.</b> Interesse 9 e 14 anni: da 1 (poco adatto) a 5 (ideale). Voto famiglia: giudizio complessivo 1–5 per una famiglia con entrambe le età. Le foto sono caricate automaticamente da Wikipedia/Wikimedia Commons; se un'immagine manca compare un segnaposto.</p>
+    <p>⚠️ Le voci contrassegnate con <span class="warnbadge">DA VERIFICARE</span> non sono confermabili con certezza dalle fonti ufficiali: controlla sul sito indicato nei giorni precedenti la visita. Orari, giorni di chiusura e prenotazioni possono cambiare.</p>
+    <div class="legend" id="legend"></div>
+    <p style="margin-top:14px">Generato dal file <i>Tabella_comparativa_Berlino.xlsx</i>. Mappa © OpenStreetMap contributors · Leaflet.</p>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+/* ---------- DATI ---------- */
+const CATS = {
+  "Storia raccontata in modo coinvolgente":{e:"🏛️",c:"var(--c-storia)"},
+  "Tecnologia, scienza e cultura pop":{e:"🔬",c:"var(--c-tech)"},
+  "Parchi e attività all'aperto":{e:"🌳",c:"var(--c-parchi)"},
+  "Street art e quartieri curiosi":{e:"🎨",c:"var(--c-street)"},
+  "Esperienze davvero insolite":{e:"✨",c:"var(--c-insolite)"},
+  "Punti panoramici gratuiti":{e:"🔭",c:"var(--c-pano)"},
+  "Mercati ed eventi gratuiti":{e:"🛍️",c:"var(--c-mercati)"}
+};
+const HOTEL = {lat:52.5041,lng:13.3808};
+
+// s=stop name, t=type (u/s/bus/tram/walk), l=lines label
+const D = [
+  {"n":"Rovine del portale dell'Anhalter Bahnhof","cat":"Storia raccontata in modo coinvolgente","zone":"Zona 1, hotel e dintorni","addr":"Askanischer Platz, 10963 Berlino (Kreuzberg)","distKm":0.3,"timeH":"4 minuti a piedi","trans":"A piedi","dur":"15-20 minuti","durMax":20,"free":"Sì, sempre","freeAlways":true,"hours":"Sempre accessibile, 24 ore su 24","book":"Non necessaria","needsBook":false,"i9":4,"i14":4,"fam":4,"src":"https://denkmalschutz.de/denkmal/portalruine-anhalter-bahnhof.html","lat":52.5045,"lng":13.3818,"verify":false,"closed":[],"desc":"Ciò che resta del monumentale ingresso di una delle più grandi stazioni d'Europa, distrutta dai bombardamenti e poi demolita. Il frammento di facciata sopravvissuto è oggi un memoriale silenzioso della Berlino prebellica.","stops":[{"s":"Anhalter Bahnhof","t":"s","l":"S1·S2·S25·S26"},{"s":"Anhalter Bahnhof","t":"bus","l":"M41"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/Anhalter_Bahnhof,_1881.jpg?width=800"},
+  {"n":"Deutsches Technikmuseum (venerdì gratuito)","cat":"Tecnologia, scienza e cultura pop","zone":"Zona 1, hotel e dintorni","addr":"Trebbiner Straße 9, 10963 Berlino (Kreuzberg)","distKm":0.5,"timeH":"6-10 minuti a piedi","trans":"A piedi","dur":"2-3 ore","durMax":180,"free":"Primo venerdì del mese dalle 13:00; a pagamento negli altri giorni, under 18 sempre gratis","freeAlways":false,"hours":"Primo venerdì del mese dalle 13:00 — DA VERIFICARE sul sito","book":"Sì, obbligatoria online","needsBook":true,"i9":5,"i14":4,"fam":4,"src":"https://www.technikmuseum.berlin/en/visit/prices","lat":52.4986,"lng":13.3778,"verify":true,"closed":[1],"desc":"Uno dei più grandi musei della tecnica al mondo: locomotive storiche, aerei, navi, la storia dell'informatica e laboratori interattivi. Il primo venerdì del mese l'ingresso è gratuito dal pomeriggio (i minori di 18 anni entrano sempre gratis).","stops":[{"s":"Möckernbrücke","t":"u","l":"U1·U3·U7"},{"s":"Gleisdreieck","t":"u","l":"U1·U2·U3"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/Deutsches_technikmuseum_berlin_20080429.jpg?width=1000"},
+  {"n":"Park am Gleisdreieck","cat":"Parchi e attività all'aperto","zone":"Zona 1, hotel e dintorni","addr":"Möckernstraße/Flottwellstraße, 10963/10785 Berlino","distKm":0.8,"timeH":"10-12 minuti a piedi","trans":"A piedi","dur":"1,5-2 ore","durMax":120,"free":"Sì, sempre","freeAlways":true,"hours":"Sempre accessibile, giochi d'acqua 9:00-19:00","book":"Non necessaria","needsBook":false,"i9":5,"i14":4,"fam":5,"src":"https://gruen-berlin.de/en/projects/parks/park-am-gleisdreieck","lat":52.4977,"lng":13.3745,"verify":false,"closed":[],"desc":"Grande parco urbano nato sui binari dismessi tra Kreuzberg e Schöneberg, con prati, skatepark, giochi d'acqua e aree per bambini. Un modello berlinese di riuso degli spazi ferroviari.","stops":[{"s":"Gleisdreieck","t":"u","l":"U1·U2·U3"},{"s":"Möckernbrücke","t":"u","l":"U1·U3·U7"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/Karte_Park_am_Gleisdreieck_2014.jpg?width=1000"},
+  {"n":"Topographie des Terrors e resti del Muro","cat":"Storia raccontata in modo coinvolgente","zone":"Zona 1, hotel e dintorni","addr":"Niederkirchnerstraße 8, 10963 Berlino","distKm":0.9,"timeH":"11 minuti a piedi","trans":"A piedi","dur":"1,5-2,5 ore","durMax":150,"free":"Sì, sempre","freeAlways":true,"hours":"Tutti i giorni 10:00-20:00","book":"Non necessaria","needsBook":false,"i9":4,"i14":5,"fam":5,"src":"https://www.topographie.de/ihr-besuch","lat":52.5065,"lng":13.3833,"verify":false,"closed":[],"desc":"Museo all'aperto e centro di documentazione sul terrore nazista, costruito dove sorgevano la Gestapo e le SS. Accanto corre uno dei tratti originali più lunghi del Muro di Berlino.","stops":[{"s":"Potsdamer Platz","t":"s","l":"S1·S2·U2"},{"s":"Kochstr./Checkpoint Charlie","t":"u","l":"U6"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/Dokumentationszentrum_Topographie_des_Terrors.jpg?width=800"},
+  {"n":"Center am Potsdamer Platz (ex Sony Center)","cat":"Tecnologia, scienza e cultura pop","zone":"Zona 1, hotel e dintorni","addr":"Potsdamer Platz, 10785 Berlino","distKm":1.2,"timeH":"12-15 minuti a piedi","trans":"A piedi / U2","dur":"1-1,5 ore","durMax":90,"free":"Sì, sempre (piazza esterna)","freeAlways":true,"hours":"Sempre, 24 ore su 24","book":"Non necessaria","needsBook":false,"i9":4,"i14":4,"fam":4,"src":"https://www.berlin.de/en/attractions-and-sights/3560868-3104052-sony-center.en.html","lat":52.5096,"lng":13.373,"verify":false,"closed":[],"desc":"Piazza coperta da una spettacolare cupola a vela nel cuore di Potsdamer Platz, simbolo della Berlino ricostruita dopo la riunificazione. Bar, cinema e architettura futuristica, gratis da ammirare.","stops":[{"s":"Potsdamer Platz","t":"u","l":"U2"},{"s":"Potsdamer Platz","t":"s","l":"S1·S2·S25·S26"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/SonyCenterAtNight.jpg?width=1000"},
+  {"n":"Tiergarten","cat":"Parchi e attività all'aperto","zone":"Zona 3, Tiergarten e area governativa","addr":"Tra Porta di Brandeburgo e Bahnhof Zoo, 10785 Berlino","distKm":1.3,"timeH":"12-15 minuti a piedi","trans":"A piedi","dur":"1,5-3 ore","durMax":180,"free":"Sì, sempre","freeAlways":true,"hours":"Sempre aperto","book":"Non necessaria","needsBook":false,"i9":4,"i14":3,"fam":4,"src":"https://www.visitberlin.de/en/tiergarten","lat":52.5145,"lng":13.3501,"verify":false,"closed":[],"desc":"Il grande polmone verde nel centro di Berlino, tra la Porta di Brandeburgo e lo zoo. Viali alberati, laghetti, prati per picnic e monumenti nascosti tra la vegetazione.","stops":[{"s":"Tiergarten","t":"s","l":"S3·S5·S7·S9"},{"s":"Potsdamer Platz","t":"bus","l":"200"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/Berlin_Tiergarten_Siegess%C3%A4ule_Luftansicht.jpg?width=1000"},
+  {"n":"Checkpoint Charlie (sito storico)","cat":"Storia raccontata in modo coinvolgente","zone":"Zona 4, Mitte storica","addr":"Friedrichstraße 43-45, 10117 Berlino","distKm":1.4,"timeH":"18 minuti a piedi","trans":"A piedi / U6","dur":"15-20 minuti","durMax":20,"free":"Sì, sito esterno (museo interno a pagamento escluso)","freeAlways":true,"hours":"Sempre accessibile","book":"Non necessaria","needsBook":false,"i9":4,"i14":4,"fam":4,"src":"https://www.berlin.de/en/attractions-and-sights/3560059-3104052-checkpoint-charlie.en.html","lat":52.5075,"lng":13.3904,"verify":false,"closed":[],"desc":"Il più celebre posto di frontiera tra Berlino Est e Ovest durante la Guerra Fredda. Oggi la ricostruzione della garitta e i pannelli storici all'aperto raccontano la storia del confine.","stops":[{"s":"Kochstr./Checkpoint Charlie","t":"u","l":"U6"},{"s":"Stadtmitte","t":"u","l":"U2·U6"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/Bundesarchiv_B_145_Bild-F079005-0021%2C_Berlin%2C_Grenz%C3%BCbergang_Checkpoint_Charlie.jpg?width=1000"},
+  {"n":"Memoriale per gli Ebrei assassinati d'Europa","cat":"Storia raccontata in modo coinvolgente","zone":"Zona 3, Tiergarten e area governativa","addr":"Cora-Berliner-Straße 1, 10117 Berlino","distKm":1.6,"timeH":"20 min a piedi / 10 min mezzi","trans":"A piedi / bus M41","dur":"20-60 minuti","durMax":60,"free":"Sì, stele sempre gratuite; mostra sotterranea a ingresso libero","freeAlways":true,"hours":"Campo di stele sempre aperto · mostra chiusa il lunedì","book":"Non necessaria","needsBook":false,"i9":3,"i14":5,"fam":4,"src":"https://www.stiftung-denkmal.de/denkmaeler/denkmal-fuer-die-ermordeten-juden-europas/","lat":52.5139,"lng":13.3789,"verify":false,"closed":[1],"closedPartial":true,"desc":"2.711 stele di cemento di altezze diverse formano un labirinto che invita alla riflessione sulla Shoah. Sotto, il centro di documentazione (Ort der Information) racconta le storie delle vittime.","stops":[{"s":"Brandenburger Tor","t":"s","l":"S1·S2·U5"},{"s":"Potsdamer Platz","t":"u","l":"U2·S1·S2"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/Memorial_to_the_Murdered_Jews_of_Europeabove.jpg?width=1000"},
+  {"n":"Viktoriapark","cat":"Parchi e attività all'aperto","zone":"Zona 2, Kreuzberg sud","addr":"Kreuzbergstraße 15, 10965 Berlino","distKm":1.7,"timeH":"20-25 minuti a piedi","trans":"A piedi / U7","dur":"45-60 minuti","durMax":60,"free":"Sì, sempre","freeAlways":true,"hours":"Cascata attiva 9:00-21:00 in stagione","book":"Non necessaria","needsBook":false,"i9":5,"i14":4,"fam":5,"src":"https://www.berlin.de/en/parks-and-gardens/3560783-4407152-viktoriapark.en.html","lat":52.4879,"lng":13.3768,"verify":false,"closed":[],"desc":"Collina panoramica di Kreuzberg coronata dal monumento nazionale e attraversata da una scenografica cascata artificiale. Dall'alto, una bella vista sulla città.","stops":[{"s":"Platz der Luftbrücke","t":"u","l":"U6"},{"s":"Yorckstraße","t":"u","l":"U7"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/Viktoriapark_B-Kreuzberg_06-2017_img1.jpg?width=1000"},
+  {"n":"Bergmannkiez","cat":"Street art e quartieri curiosi","zone":"Zona 2, Kreuzberg sud","addr":"Bergmannstraße/Chamissoplatz, 10961/10965 Berlino","distKm":2,"timeH":"15-20 minuti","trans":"U7","dur":"1,5-2 ore","durMax":120,"free":"Sì, sempre","freeAlways":true,"hours":"Sempre accessibile","book":"Non necessaria","needsBook":false,"i9":4,"i14":4,"fam":4,"src":"https://www.berlin.de/en/districts/neighborhoods/7480200-9215243-bergmannkiez.en.html","lat":52.489,"lng":13.39,"verify":false,"closed":[],"desc":"Uno dei quartieri più vivaci di Kreuzberg: la Bergmannstraße con negozi vintage e caffè e la Chamissoplatz dalle case d'epoca. Atmosfera bohémien tutta da passeggiare.","stops":[{"s":"Gneisenaustraße","t":"u","l":"U7"},{"s":"Mehringdamm","t":"u","l":"U6·U7"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/Bergmann4.jpg?width=1000"},
+  {"n":"AMPELMANN Shop (flagship store)","cat":"Tecnologia, scienza e cultura pop","zone":"Zona 4, Mitte storica","addr":"Unter den Linden 35, 10117 Berlino","distKm":2,"timeH":"20-25 minuti","trans":"U2","dur":"20-30 minuti","durMax":30,"free":"Sì, sempre","freeAlways":true,"hours":"Lun-sab 9:00-21:00, dom 13:00-20:00","book":"Non necessaria","needsBook":false,"i9":5,"i14":3,"fam":3,"src":"https://www.ampelmann.de/en/shops-cafes/flagship-store-unter-den-linden/","lat":52.5165,"lng":13.3897,"verify":false,"closed":[],"desc":"Il negozio dedicato all'Ampelmännchen, l'omino dei semafori della DDR diventato icona pop di Berlino. Anche solo curiosare tra i gadget colorati è un'esperienza.","stops":[{"s":"Französische Straße","t":"u","l":"U6"},{"s":"Unter den Linden","t":"u","l":"U5"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/DDR_Ampelm%C3%A4nnchen_-_gr%C3%BCn.JPG?width=1000"},
+  {"n":"Urban Nation (museo di arte urbana)","cat":"Street art e quartieri curiosi","zone":"Zona 6, Schöneberg e Alexanderplatz","addr":"Bülowstraße 7, 10783 Berlino","distKm":2,"timeH":"15-18 minuti","trans":"U2","dur":"1-1,5 ore","durMax":90,"free":"Sì, sempre","freeAlways":true,"hours":"Mar-mer 10-18, gio-dom 12-20 · chiuso lunedì","book":"Non necessaria","needsBook":false,"i9":4,"i14":5,"fam":4,"src":"https://urban-nation.com/plan-your-visit/","lat":52.4977,"lng":13.3596,"verify":false,"closed":[1],"desc":"Museo dedicato alla street art e alla urban art contemporanea, con opere di artisti internazionali dentro e sulla facciata dell'edificio. Ingresso gratuito.","stops":[{"s":"Bülowstraße","t":"u","l":"U2"},{"s":"Nollendorfplatz","t":"u","l":"U1·U2·U3·U4"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/Urban_Nation_Museum._Love_letters_to_the_City.jpg?width=1000"},
+  {"n":"Gedenkstätte Deutscher Widerstand (Bendlerblock)","cat":"Storia raccontata in modo coinvolgente","zone":"Zona 3, Tiergarten e area governativa","addr":"Stauffenbergstraße 13-14, 10785 Berlino","distKm":2.1,"timeH":"12-15 minuti","trans":"Bus M29","dur":"45-60 minuti","durMax":60,"free":"Sì, sempre","freeAlways":true,"hours":"Lun-ven 9-18, sab-dom-festivi 10-18","book":"Non necessaria","needsBook":false,"i9":3,"i14":5,"fam":4,"src":"https://www.gdw-berlin.de/besuch/","lat":52.509,"lng":13.361,"verify":false,"closed":[],"desc":"Memoriale e museo della resistenza tedesca al nazismo, nel Bendlerblock dove fu giustiziato von Stauffenberg dopo l'attentato a Hitler del 20 luglio 1944.","stops":[{"s":"Mendelssohn-Bartholdy-Park","t":"u","l":"U2"},{"s":"Kulturforum","t":"bus","l":"M29·M48"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/Berlin_Mitte_Bendlerblock_Innenhof.jpg?width=1000"},
+  {"n":"Offener Garten Moritzplatz (ex Prinzessinnengarten)","cat":"Esperienze davvero insolite","zone":"Zona 10, Kreuzberg ovest","addr":"Prinzenstraße 35-38, 10969 Berlino","distKm":2.3,"timeH":"15-18 minuti","trans":"U1","dur":"30-45 minuti","durMax":45,"free":"Sì, sempre","freeAlways":true,"hours":"DA VERIFICARE orario esatto, aperto la domenica","book":"Non necessaria","needsBook":false,"i9":3,"i14":3,"fam":3,"src":"https://www.berlin.de/en/urban-gardening/community-gardens/9559618-9521509-offener-garten-moritzplatz.en.html","lat":52.5024,"lng":13.4109,"verify":true,"closed":[],"desc":"Giardino comunitario urbano nato su un terreno abbandonato a Moritzplatz: orti, api, iniziative ecologiche e un caffè all'aperto. Un angolo verde alternativo e rilassato.","stops":[{"s":"Moritzplatz","t":"u","l":"U8"},{"s":"Prinzenstraße","t":"u","l":"U1·U3"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/Berlin-Kreuzberg_Prinzessinneng%C3%A4rten_1.jpg?width=1000"},
+  {"n":"Bebelplatz (memoriale della biblioteca vuota)","cat":"Esperienze davvero insolite","zone":"Zona 4, Mitte storica","addr":"Bebelplatz, 10117 Berlino","distKm":2.3,"timeH":"30 min a piedi / 12-14 min mezzi","trans":"A piedi / U6","dur":"15-20 minuti","durMax":20,"free":"Sì, sempre","freeAlways":true,"hours":"Sempre, a cielo aperto","book":"Non necessaria","needsBook":false,"i9":4,"i14":5,"fam":4,"src":"https://www.visitberlin.de/en/book-burning-memorial-bebelplatz","lat":52.517,"lng":13.3937,"verify":false,"closed":[],"desc":"La piazza del rogo dei libri del 1933. Al centro, sotto una lastra di vetro, il memoriale della «biblioteca vuota» di Micha Ullman: scaffali bianchi e deserti.","stops":[{"s":"Unter den Linden","t":"u","l":"U5"},{"s":"Französische Straße","t":"u","l":"U6"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/Berlin_Bebelplatz_asv2018-05_img3.jpg?width=1000"},
+  {"n":"Gendarmenmarkt","cat":"Storia raccontata in modo coinvolgente","zone":"Zona 4, Mitte storica","addr":"Gendarmenmarkt, 10117 Berlino","distKm":2.3,"timeH":"28-30 minuti","trans":"U6","dur":"20-30 minuti","durMax":30,"free":"Sì, la piazza (interni chiese a pagamento)","freeAlways":true,"hours":"Sempre accessibile","book":"Non necessaria","needsBook":false,"i9":4,"i14":4,"fam":4,"src":"https://www.visitberlin.de/en/franzosischer-dom-french-cathedral","lat":52.5138,"lng":13.3925,"verify":false,"closed":[],"desc":"Considerata una delle piazze più belle d'Europa, incorniciata dal Duomo Tedesco, dal Duomo Francese e dalla Konzerthaus. Spettacolare soprattutto la sera.","stops":[{"s":"Stadtmitte","t":"u","l":"U2·U6"},{"s":"Französische Straße","t":"u","l":"U6"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/Berlin_-_Gendarmenmarkt_%28tone-mapping%29.jpg?width=1000"},
+  {"n":"Cupola del Reichstag","cat":"Punti panoramici gratuiti","zone":"Zona 3, Tiergarten e area governativa","addr":"Platz der Republik 1, 11011 Berlino","distKm":2.3,"timeH":"20-25 minuti","trans":"S-Bahn / bus 100","dur":"45-60 minuti","durMax":60,"free":"Sì, sempre","freeAlways":true,"hours":"Tutti i giorni, ultimo ingresso 21:45","book":"Sì, obbligatoria online (visite.bundestag.de)","needsBook":true,"i9":5,"i14":5,"fam":5,"src":"https://www.bundestag.de/besuche/kuppel-dachterrasseunddachgartenrestaurant/kuppel-inhalt-244990","lat":52.5186,"lng":13.3762,"verify":false,"closed":[],"desc":"La cupola di vetro sopra il parlamento tedesco offre una vista a 360° su Berlino lungo una rampa a spirale. Ingresso gratuito ma con prenotazione obbligatoria online.","stops":[{"s":"Brandenburger Tor","t":"s","l":"S1·S2·U5"},{"s":"Bundestag","t":"u","l":"U5"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/Berlin_-_Reichstagsgeb%C3%A4ude3.jpg?width=1000"},
+  {"n":"Futurium (il museo del futuro)","cat":"Tecnologia, scienza e cultura pop","zone":"Zona 5, Mitte nord","addr":"Alexanderufer 2, 10117 Berlino","distKm":2.6,"timeH":"25-30 minuti","trans":"U2 + S-Bahn","dur":"1,5-2,5 ore","durMax":150,"free":"Sì, sempre","freeAlways":true,"hours":"10-18 (gio fino 20) · chiuso il martedì","book":"Non necessaria","needsBook":false,"i9":5,"i14":5,"fam":5,"src":"https://futurium.de/de","lat":52.525,"lng":13.372,"verify":false,"closed":[2],"desc":"Il «museo del futuro»: mostre interattive su come vivremo tra energia, città, salute e tecnologia. Ingresso gratuito e un laboratorio (Futurium Lab) pieno di installazioni da provare.","stops":[{"s":"Berlin Hauptbahnhof","t":"s","l":"S3·S5·S7·U5"},{"s":"Bundestag","t":"u","l":"U5"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/FuturiumBerlin2021.jpg?width=1000"},
+  {"n":"Hackesche Höfe","cat":"Esperienze davvero insolite","zone":"Zona 5, Mitte nord","addr":"Rosenthaler Straße 40-41, 10178 Berlino","distKm":2.9,"timeH":"18-20 minuti","trans":"S-Bahn","dur":"45-60 minuti","durMax":60,"free":"Sì, sempre","freeAlways":true,"hours":"Orario negozi, generalmente 10:00-20:00","book":"Non necessaria","needsBook":false,"i9":4,"i14":4,"fam":4,"src":"https://www.visitberlin.de/en/hackesche-hofe","lat":52.5245,"lng":13.4023,"verify":false,"closed":[],"desc":"Il più grande complesso di cortili interconnessi della Germania, in stile Jugendstil. Botteghe, gallerie, caffè e facciate decorate tra un cortile e l'altro.","stops":[{"s":"Hackescher Markt","t":"s","l":"S3·S5·S7·S9"},{"s":"Weinmeisterstraße","t":"u","l":"U8"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/Berlin-Mitte-hacke-hoefe-aussen.jpg?width=1000"},
+  {"n":"Tempelhofer Feld","cat":"Parchi e attività all'aperto","zone":"Zona 2, Kreuzberg sud","addr":"Ingressi da Tempelhofer Damm/Columbiadamm/Oderstraße","distKm":2.8,"timeH":"25-30 minuti","trans":"U7 + U6","dur":"2-3 ore","durMax":180,"free":"Sì, per legge, sempre","freeAlways":true,"hours":"Circa 6:00-21:30 in agosto — DA VERIFICARE","book":"Non necessaria","needsBook":false,"i9":5,"i14":5,"fam":5,"src":"https://www.berlin.de/en/parks-and-gardens/3561883-4407152-park-tempelhofer-feld.en.html","lat":52.473,"lng":13.403,"verify":true,"closed":[],"desc":"L'ex aeroporto di Tempelhof trasformato in un immenso parco pubblico: si cammina e si pedala sulle piste di decollo, tra aquiloni, orti urbani e spazi liberi a perdita d'occhio.","stops":[{"s":"Platz der Luftbrücke","t":"u","l":"U6"},{"s":"Boddinstraße","t":"u","l":"U8"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/Aerial%2C_Berlin_%28_1090064%29.jpg?width=1000"},
+  {"n":"Xperion al Saturn di Alexanderplatz","cat":"Tecnologia, scienza e cultura pop","zone":"Zona 6, Schöneberg e Alexanderplatz","addr":"Alexanderplatz 3, 10178 Berlino","distKm":3.3,"timeH":"20-25 minuti","trans":"U2","dur":"30-60 minuti","durMax":60,"free":"Sì, ma accesso solo dai 12 anni in su","freeAlways":true,"hours":"Lun-sab 10:00-21:00 · domenica DA VERIFICARE","book":"Non necessaria","needsBook":false,"i9":1,"i14":5,"fam":2,"src":"https://www.test.de/Xperion-Berlin-Gaming-Location-fuer-Kinder-ab-zwoelf-5989107-0/","lat":52.5215,"lng":13.411,"verify":true,"closed":[0],"desc":"Grande area gaming gratuita dentro il megastore Saturn: console, VR e ultime uscite da provare. Accesso consentito solo dai 12 anni in su.","stops":[{"s":"Alexanderplatz","t":"u","l":"U2·U5·U8"},{"s":"Alexanderplatz","t":"s","l":"S3·S5·S7·S9"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/Alexanderplatz_in_Berlin_-_Panorama.jpg?width=1000"},
+  {"n":"Markthalle Neun (Street Food Thursday)","cat":"Mercati ed eventi gratuiti","zone":"Zona 7, Friedrichshain e Kreuzberg est","addr":"Eisenbahnstraße 42/43, 10997 Berlino","distKm":3.3,"timeH":"18-20 minuti","trans":"U1","dur":"1-1,5 ore","durMax":90,"free":"Sì, ingresso libero (si paga solo il cibo)","freeAlways":true,"hours":"Ogni giovedì 17:00-22:00 (confermato 6 ago 2026)","book":"Non necessaria","needsBook":false,"i9":5,"i14":5,"fam":5,"src":"https://markthalleneun.de/en/markets/street-food-thursday","lat":52.5015,"lng":13.4318,"verify":false,"closed":[0,1,2,3,5,6],"closedNote":"Street Food Thursday solo il giovedì","desc":"Storico mercato coperto di Kreuzberg. Il giovedì sera lo Street Food Thursday riempie i banchi di cucine da tutto il mondo: ingresso libero, si paga solo ciò che si assaggia.","stops":[{"s":"Görlitzer Bahnhof","t":"u","l":"U1·U3"},{"s":"Schlesisches Tor","t":"u","l":"U1·U3"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/Berlin%2C_Kreuzberg%2C_Eisenbahnstrasse_42-43%2C_Markthalle_IX.jpg?width=1000"},
+  {"n":"Görlitzer Park","cat":"Parchi e attività all'aperto","zone":"Zona 7, Friedrichshain e Kreuzberg est","addr":"Görlitzer Straße 47, 10997 Berlino","distKm":4.3,"timeH":"20-25 minuti","trans":"U1","dur":"1-1,5 ore","durMax":90,"free":"Sì, sempre","freeAlways":true,"hours":"14 mag-22 set 6:00-23:00","book":"Non necessaria","needsBook":false,"i9":4,"i14":3,"fam":3,"src":"https://www.berlin.de/en/parks-and-gardens/3560154-4407152-goerlitzer-park.en.html","lat":52.497,"lng":13.436,"verify":false,"closed":[],"desc":"Grande parco di Kreuzberg molto amato da famiglie e giovani, con prati, area giochi e una piccola fattoria didattica. Cuore verde del quartiere multiculturale.","stops":[{"s":"Görlitzer Bahnhof","t":"u","l":"U1·U3"},{"s":"Schlesisches Tor","t":"u","l":"U1·U3"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/Vogelperspektive_-_G%C3%B6rlitzer_Park_in_Berlin-Kreuzberg.jpg?width=1000"},
+  {"n":"East Side Gallery","cat":"Street art e quartieri curiosi","zone":"Zona 7, Friedrichshain e Kreuzberg est","addr":"Mühlenstraße 47-80, 10243 Berlino","distKm":4.2,"timeH":"25-30 minuti","trans":"U1","dur":"1-2 ore","durMax":120,"free":"Sì, sempre","freeAlways":true,"hours":"Percorso aperto 24 ore su 24","book":"Non necessaria","needsBook":false,"i9":5,"i14":5,"fam":5,"src":"https://www.stiftung-berliner-mauer.de/en/east-side-gallery/visit","lat":52.505,"lng":13.4394,"verify":false,"closed":[],"desc":"Il tratto più lungo del Muro di Berlino ancora in piedi, trasformato nella più grande galleria a cielo aperto del mondo con oltre cento murales, tra cui il celebre bacio fraterno.","stops":[{"s":"Warschauer Straße","t":"u","l":"U1·U3"},{"s":"Ostbahnhof","t":"s","l":"S3·S5·S7·S9"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/East_Side_Gallery.JPG?width=1000"},
+  {"n":"RAW-Gelände e Urban Spree Galerie","cat":"Street art e quartieri curiosi","zone":"Zona 7, Friedrichshain e Kreuzberg est","addr":"Revaler Straße 99, 10245 Berlino","distKm":4.9,"timeH":"20-25 minuti","trans":"U1","dur":"1-1,5 ore","durMax":90,"free":"Sì, area esterna; galleria gratuita","freeAlways":true,"hours":"Area sempre aperta · galleria lun 14-19, mar-sab 11-19","book":"Non necessaria","needsBook":false,"i9":3,"i14":5,"fam":4,"src":"https://urbanspree.com/galerie/","lat":52.5075,"lng":13.453,"verify":true,"closed":[0],"closedPartial":true,"desc":"Ex officina ferroviaria diventata cuore della cultura alternativa di Friedrichshain: street art, club, skatepark e mercatini. La Urban Spree Galerie ospita mostre gratuite.","stops":[{"s":"Warschauer Straße","t":"u","l":"U1·U3"},{"s":"Warschauer Straße","t":"s","l":"S3·S5·S7·S9"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/RAW_Berlin_Tor1.jpg?width=1000"},
+  {"n":"Mauerpark (Flohmarkt e Bearpit Karaoke)","cat":"Mercati ed eventi gratuiti","zone":"Zona 8, Prenzlauer Berg","addr":"Mauerpark, Bernauer Straße/Eberswalder Straße","distKm":5.3,"timeH":"25-30 minuti","trans":"U2","dur":"2-3 ore","durMax":180,"free":"Sì, ingresso libero","freeAlways":true,"hours":"Mercatino ogni domenica 10:00-18:00; karaoke pomeriggio","book":"Non necessaria","needsBook":false,"i9":5,"i14":5,"fam":5,"src":"https://www.mauerpark.info/en/culture/flohmarkt/","lat":52.544,"lng":13.402,"verify":false,"closed":[1,2,3,4,5,6],"closedNote":"Mercatino/karaoke solo la domenica","desc":"Parco nato sulla striscia della morte del Muro. La domenica è animatissimo tra il grande mercatino delle pulci e il celebre karaoke all'aperto nell'anfiteatro (Bearpit Karaoke).","stops":[{"s":"Eberswalder Straße","t":"u","l":"U2"},{"s":"Bernauer Straße","t":"u","l":"U8"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/Berlin_Mauerpark_2022.jpg?width=1000"},
+  {"n":"Flakturm Humboldthain (collina panoramica)","cat":"Punti panoramici gratuiti","zone":"Zona 9, Wedding e Gesundbrunnen","addr":"Volkspark Humboldthain, Brunnenstraße 110, 13355 Berlino","distKm":5.1,"timeH":"30 minuti","trans":"S-Bahn","dur":"60-90 minuti","durMax":90,"free":"Sì, percorso esterno e collina (tour bunker escluso)","freeAlways":true,"hours":"Sempre accessibile — DA VERIFICARE orari specifici","book":"Non necessaria","needsBook":false,"i9":4,"i14":4,"fam":3,"src":"https://www.visitberlin.de/en/humboldthain-park","lat":52.546,"lng":13.383,"verify":true,"closed":[],"desc":"Nel Volkspark Humboldthain si sale su una collina, formata dalle macerie, che ricopre un enorme bunker antiaereo della Seconda guerra mondiale. Dalla cima, ampia vista sulla città.","stops":[{"s":"Gesundbrunnen","t":"s","l":"S1·S2·S25·S41·S42"},{"s":"Humboldthain","t":"s","l":"S1·S2·S25"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/Humboldth%C3%B6he2.jpg?width=1000"},
+  {"n":"Mercato delle pulci di Boxhagener Platz","cat":"Mercati ed eventi gratuiti","zone":"Zona 7, Friedrichshain e Kreuzberg est","addr":"Boxhagener Platz 1, 10245 Berlino","distKm":5.6,"timeH":"25-30 minuti","trans":"U1","dur":"1-1,5 ore","durMax":90,"free":"Sì, ingresso libero","freeAlways":true,"hours":"Ogni domenica 10:00-18:00 (confermato 9 ago 2026)","book":"Non necessaria","needsBook":false,"i9":3,"i14":4,"fam":3,"src":"https://www.berlin.de/en/shopping/markets/flea-markets/1998240-2983302-flea-market-boxhagener-platz.en.html","lat":52.5115,"lng":13.4595,"verify":false,"closed":[1,2,3,4,5,6],"closedNote":"Mercatino solo la domenica","desc":"La domenica la vivace piazza di Friedrichshain ospita un mercatino delle pulci amatissimo per vintage, dischi e oggetti curiosi. Intorno, caffè e locali del quartiere.","stops":[{"s":"Frankfurter Tor","t":"u","l":"U5"},{"s":"Ostkreuz","t":"s","l":"S3·S5·S7·S9"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/Boxhagener_Platz_Berlin.jpg?width=1000"},
+  {"n":"Molecule Man","cat":"Esperienze davvero insolite","zone":"Zona 7, Friedrichshain e Kreuzberg est","addr":"Riva dell'Osthafen, Am Osthafen, 10997 Berlino","distKm":5.8,"timeH":"25-30 minuti","trans":"U1 + a piedi","dur":"20-30 minuti","durMax":30,"free":"Sì, sempre visibile","freeAlways":true,"hours":"Sempre, nessun orario","book":"Non necessaria","needsBook":false,"i9":3,"i14":4,"fam":3,"src":"https://www.visitberlin.de/en/molecule-men","lat":52.4975,"lng":13.453,"verify":false,"closed":[],"desc":"Tre gigantesche figure di alluminio alte 30 metri che si incontrano sull'acqua della Sprea, opera di Jonathan Borofsky. Simboleggiano l'incontro dei tre quartieri circostanti.","stops":[{"s":"Treptower Park","t":"s","l":"S8·S9·S41·S42"},{"s":"Schlesisches Tor","t":"u","l":"U1·U3"}],"img":"https://commons.wikimedia.org/wiki/Special:FilePath/Molecule_Man_-_Berlin_-_2013.jpg?width=1000"}
+];
+
+/* ---------- STATO FILTRI ---------- */
+const state={q:"",cats:new Set(),zones:new Set(),trans:new Set(),dist:5.8,dur:180,i9:0,i14:0,fam:0,freeAlways:false,noBooking:false,day:"",sort:"dist"};
+const $=s=>document.querySelector(s);
+const uniq=k=>[...new Set(D.map(d=>d[k]))];
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* checkbox filter builders */
+function buildChecks(el,values,set,withSwatch){
+  el.innerHTML=values.map(v=>{
+    const sw=withSwatch?`<span class="swatch" style="background:${CATS[v].c}"></span>`:"";
+    const label=withSwatch?`${CATS[v].e} ${v}`:v;
+    return `<label class="chk"><input type="checkbox" value="${esc(v)}">${sw}<span>${esc(label)}</span></label>`;
+  }).join("");
+  el.querySelectorAll("input").forEach(inp=>inp.addEventListener("change",()=>{
+    inp.checked?set.add(inp.value):set.delete(inp.value);render();
+  }));
+}
+buildChecks($("#fCat"),Object.keys(CATS),state.cats,true);
+buildChecks($("#fZone"),uniq("zone").sort(),state.zones,false);
+buildChecks($("#fTrans"),uniq("trans").sort(),state.trans,false);
+
+/* star buttons */
+function buildStars(el,key){
+  el.innerHTML=[1,2,3,4,5].map(n=>`<button data-n="${n}">${n}+</button>`).join("")
+    + `<button data-n="0" class="on">Tutte</button>`;
+  el.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
+    state[key]=+b.dataset.n;
+    el.querySelectorAll("button").forEach(x=>x.classList.toggle("on",+x.dataset.n===state[key]));
+    render();
+  }));
+}
+buildStars($("#i9"),"i9");buildStars($("#i14"),"i14");buildStars($("#fam"),"fam");
+
+/* sliders */
+const dist=$("#dist"),dur=$("#dur");
+function distTxt(){$("#distVal").textContent=state.dist>=5.8?"tutte":`≤ ${state.dist.toFixed(1)} km`;}
+function durTxt(){$("#durVal").textContent=state.dur>=180?"tutte":`≤ ${state.dur} min`;}
+dist.value=5.8;dur.value=180;distTxt();durTxt();
+dist.addEventListener("input",()=>{state.dist=+dist.value;distTxt();render();});
+dur.addEventListener("input",()=>{state.dur=+dur.value;durTxt();render();});
+
+$("#q").addEventListener("input",e=>{state.q=e.target.value.trim().toLowerCase();render();});
+$("#freeAlways").addEventListener("change",e=>{state.freeAlways=e.target.checked;render();});
+$("#noBooking").addEventListener("change",e=>{state.noBooking=e.target.checked;render();});
+$("#openDay").addEventListener("change",e=>{state.day=e.target.value;render();});
+$("#sort").addEventListener("change",e=>{state.sort=e.target.value;render();});
+
+function resetAll(){
+  state.q="";state.cats.clear();state.zones.clear();state.trans.clear();
+  state.dist=5.8;state.dur=180;state.i9=0;state.i14=0;state.fam=0;
+  state.freeAlways=false;state.noBooking=false;state.day="";state.sort="dist";
+  $("#q").value="";dist.value=5.8;dur.value=180;distTxt();durTxt();
+  $("#freeAlways").checked=false;$("#noBooking").checked=false;$("#openDay").value="";$("#sort").value="dist";
+  document.querySelectorAll("aside .chk input").forEach(i=>i.checked=false);
+  ["i9","i14","fam"].forEach(k=>$("#"+k).querySelectorAll("button").forEach(x=>x.classList.toggle("on",+x.dataset.n===0)));
+  render();
+}
+$("#reset").addEventListener("click",resetAll);
+$("#resetInline").addEventListener("click",e=>{e.preventDefault();resetAll();});
+
+/* ---------- FILTRO + ORDINAMENTO ---------- */
+function pass(d){
+  if(state.q){const hay=(d.n+" "+d.zone+" "+d.addr+" "+d.desc+" "+d.cat).toLowerCase();if(!hay.includes(state.q))return false;}
+  if(state.cats.size&&!state.cats.has(d.cat))return false;
+  if(state.zones.size&&!state.zones.has(d.zone))return false;
+  if(state.trans.size&&!state.trans.has(d.trans))return false;
+  if(d.distKm>state.dist)return false;
+  if(d.durMax>state.dur)return false;
+  if(d.i9<state.i9)return false;
+  if(d.i14<state.i14)return false;
+  if(d.fam<state.fam)return false;
+  if(state.freeAlways&&!d.freeAlways)return false;
+  if(state.noBooking&&d.needsBook)return false;
+  if(state.day!==""&&d.closed&&d.closed.includes(+state.day)&&!d.closedPartial)return false;
+  return true;
+}
+function sortFn(a,b){
+  switch(state.sort){
+    case"fam":return b.fam-a.fam||a.distKm-b.distKm;
+    case"i9":return b.i9-a.i9||a.distKm-b.distKm;
+    case"i14":return b.i14-a.i14||a.distKm-b.distKm;
+    case"name":return a.n.localeCompare(b.n,"it");
+    default:return a.distKm-b.distKm;
+  }
+}
+
+/* ---------- RENDER CARD ---------- */
+function lineTag(t){return t==="u"?"u":t==="s"?"s":t==="tram"?"tram":t==="bus"?"bus":"walk";}
+function stopHtml(st){
+  const cls=lineTag(st.t);
+  return `<span class="stop"><span class="ln ${cls}">${esc(st.l)}</span>${esc(st.s)}</span>`;
+}
+function cardHtml(d){
+  const cat=CATS[d.cat];
+  const closedToday=state.day!==""&&d.closed&&d.closed.includes(+state.day);
+  const freeCls=d.freeAlways?"free-ok":"free-cond";
+  const verifyBadge=d.verify?`<span class="warnbadge">⚠️ DA VERIFICARE</span>`:"";
+  const partialBadge=(closedToday&&d.closedPartial)?`<span class="warnbadge">Parzialmente chiuso in questo giorno</span>`:"";
+  const gmaps=`https://www.google.com/maps/dir/?api=1&origin=${HOTEL.lat},${HOTEL.lng}&destination=${d.lat},${d.lng}`;
+  return `<article class="card" id="card-${d.i}">
+    <div class="photo">
+      <img src="${esc(d.img)}" alt="${esc(d.n)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">
+      <div class="ph">${cat.e}</div>
+      <span class="badge-cat" style="background:${cat.c}">${cat.e} ${esc(d.cat.split(",")[0].split(" ").slice(0,2).join(" "))}</span>
+      <span class="fam">👪 ${d.fam}/5</span>
+    </div>
+    <div class="cbody">
+      <div>
+        <h3>${esc(d.n)}</h3>
+        <div class="zone">📍 ${esc(d.addr)} · <span title="Zona">${esc(d.zone)}</span></div>
+      </div>
+      <div class="desc">${esc(d.desc)}</div>
+      <div class="interest">
+        <span>👦 9 anni <b>${d.i9}/5</b></span>
+        <span>🧑 14 anni <b>${d.i14}/5</b></span>
+      </div>
+      <div>
+        <div class="zone" style="margin-bottom:4px">🚉 Fermate più vicine</div>
+        <div class="transit">${d.stops.map(stopHtml).join("")}</div>
+      </div>
+      <div class="kv">
+        <span class="k">💶 Gratis</span><span class="${freeCls}">${esc(d.free)}</span>
+        <span class="k">🕒 Orari</span><span>${esc(d.hours)} ${verifyBadge}</span>
+        <span class="k">🎫 Prenotazione</span><span>${d.needsBook?"⚠️ "+esc(d.book):esc(d.book)}</span>
+        <span class="k">📏 Distanza</span><span>${d.distKm.toFixed(1)} km · ${esc(d.timeH)}</span>
+        <span class="k">🚆 Mezzo</span><span>${esc(d.trans)}</span>
+        <span class="k">⏱️ Durata</span><span>${esc(d.dur)}</span>
+      </div>
+      ${partialBadge}
+      <div style="display:flex;gap:14px;flex-wrap:wrap">
+        <a class="clink" href="${gmaps}" target="_blank" rel="noopener">🧭 Indicazioni</a>
+        <a class="clink" href="${esc(d.src)}" target="_blank" rel="noopener">🔗 Fonte ufficiale</a>
+      </div>
+    </div>
+  </article>`;
+}
+
+/* ---------- MAPPA ---------- */
+let map,markers=[],hotelMarker;
+function initMap(){
+  map=L.map("map",{scrollWheelZoom:false}).setView([52.505,13.40],12);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    {maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+  hotelMarker=L.marker([HOTEL.lat,HOTEL.lng],{
+    icon:L.divIcon({className:"",html:'<div style="font-size:26px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))">🏨</div>',iconSize:[26,26],iconAnchor:[13,26]})
+  }).addTo(map).bindPopup("<b>Base del soggiorno</b><br>Stresemannstraße 49");
+}
+function catColorHex(cat){
+  const m={"var(--c-storia)":"#e07a5f","var(--c-tech)":"#4cc9f0","var(--c-parchi)":"#8ce99a",
+    "var(--c-street)":"#c77dff","var(--c-insolite)":"#ffca3a","var(--c-pano)":"#f28482","var(--c-mercati)":"#ffb703"};
+  return m[CATS[cat].c]||"#888";
+}
+function updateMap(list){
+  markers.forEach(m=>map.removeLayer(m));markers=[];
+  list.forEach(d=>{
+    const col=catColorHex(d.cat);
+    const mk=L.marker([d.lat,d.lng],{icon:L.divIcon({className:"",
+      html:`<div style="background:${col};width:20px;height:20px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.4)"></div>`,
+      iconSize:[20,20],iconAnchor:[10,20]})}).addTo(map);
+    mk.bindPopup(`<b>${CATS[d.cat].e} ${esc(d.n)}</b><br>${esc(d.zone)}<br>👪 ${d.fam}/5 · 📏 ${d.distKm.toFixed(1)} km<br><a href="#card-${d.i}" onclick="highlight(${d.i})">Vai alla scheda ↓</a>`);
+    markers.push(mk);
+  });
+}
+window.highlight=function(i){
+  const el=document.getElementById("card-"+i);
+  if(el){el.scrollIntoView({behavior:"smooth",block:"center"});
+    el.classList.add("hl");setTimeout(()=>el.classList.remove("hl"),1600);}
+};
+
+/* ---------- MAIN RENDER ---------- */
+function render(){
+  const list=D.filter(pass).sort(sortFn);
+  const grid=$("#grid");
+  grid.innerHTML=list.map(cardHtml).join("");
+  $("#empty").hidden=list.length>0;
+  $("#count").innerHTML=`<b>${list.length}</b> attrazioni su ${D.length}`;
+  updateMap(list);
+}
+
+/* legenda */
+$("#legend").innerHTML=Object.entries(CATS).map(([k,v])=>
+  `<span><span class="swatch" style="background:${v.c}"></span>${v.e} ${esc(k.split(",")[0])}</span>`).join("");
+
+D.forEach((d,i)=>d.i=i);
+initMap();
+render();
+</script>
+</body>
+</html>
